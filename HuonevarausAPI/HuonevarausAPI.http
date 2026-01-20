@@ -1,0 +1,6 @@
+@HuonevarausAPI_HostAddress = http://localhost:5085
+
+GET {{HuonevarausAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
