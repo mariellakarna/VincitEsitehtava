@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using HuonevarausAPI.Models;
 using HuonevarausAPI.Services;
+using HuonevarausAPI.Data;
 
 namespace HuonevarausAPI.Controllers;
 
@@ -9,10 +10,12 @@ namespace HuonevarausAPI.Controllers;
 public class ReservationsController : ControllerBase
 {
     private readonly ReservationService _service;
+    private readonly AppDbContext _db;
 
-    public ReservationsController(ReservationService service)
+    public ReservationsController(ReservationService service, AppDbContext db)
     {
         _service = service;
+        _db = db;
     }
 
     // Tehdään ajan parsetukselle oma funktio, jotta ei tule turhia duplikaatteja
@@ -42,6 +45,11 @@ public class ReservationsController : ControllerBase
 
         if (start >= end)
             return BadRequest("Aloitusajan tulee olla ennen lopetusaikaa.");
+
+        // Korjaus: Tarkistetaan, että huone on olemassa
+        var roomExists = _db.Rooms.Any(r => r.Name.ToLower() == dto.RoomName.ToLower());
+        if (!roomExists)
+            return BadRequest("Huonetta ei löydy. Varaus voidaan tehdä vain olemassaoleviin huoneisiin.");
 
         var reservation = new Reservation
         {
