@@ -546,3 +546,82 @@ Nyt varauksen peruutus onnistuu helposti esimerkiksi seuraavalla pyynnöllä:
 Tässä on kokonaisuudessaan kaikki promptit joita käytin esitehtävän ensimmäiseen vaiheeseen! Seuraavassa
 osassa ovat promptit vaiheesta 2, eli kun refaktoroin koodin itse turvallisemaksi ja korjaan
 tekoälyn mahdollisesti tekemiä virheitä ja aukkoja.
+
+## VAIHE 2: KOODIN REFAKTOROINTI OMIN KÄSIN
+
+Tässä vaiheessa testailin koodia itsekseni tutkien, mitkä kohdat kaipaavat parannusta. Testasin manuaalisesti
+ensiksi varauksen luontia virheellisillä syötteillä ja huomasin, että tekoäly ei ollut osannut ottaa
+huomioon sitä, että huonetta ei välttämättä ole olemassa. Lisäsin siis tarkistuksen, että varattava huone
+on olemassa, ennen kuin varaus hyväksytään.
+
+**Kehote:**
+Ohjelmassa on se ongelma, että se antaa lisätä varauksen huoneeseen, jota ei ole olemassa tietokannassa.
+Kokeilin sitä niin, että varasin huoneen nimeltä "Neuvotteluhuone 4" ja ohjelma antoi minun tehdä niin.
+Korjaa siis ohjelmaa, että varauksia pystyy tekemään vain olemassaoleviin huoneisiin.
+
+**Tekoälyn vastaus:**
+Korjaus vaatii, että varauksen luonnin yhteydessä tarkistetaan, löytyykö huone tietokannasta. Tämä tehdään kontrollerissa, koska tietokantayhteys (AppDbContext) on käytettävissä dependency injectionin kautta. ReservationService ei tällä hetkellä käytä tietokantaa, vaan pitää varaukset muistissa.
+Lisää huoneen olemassaolon tarkistus ReservationsController-luokan Create-metodiin:
+```
+using Microsoft.AspNetCore.Mvc;
+using HuonevarausAPI.Models;
+using HuonevarausAPI.Services;
+using HuonevarausAPI.Data; // Lisää tämä
+
+namespace HuonevarausAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class ReservationsController : ControllerBase
+{
+    private readonly ReservationService _service;
+    private readonly AppDbContext _db; // Lisää tämä
+
+    public ReservationsController(ReservationService service, AppDbContext db) // Lisää AppDbContext parametri
+    {
+        _service = service;
+        _db = db;
+    }
+
+    // ... (muut metodit ennallaan)
+
+    [HttpPost]
+    public ActionResult<Reservation> Create([FromBody] ReservationCreateDto dto)
+    {
+        if (!TryParseLocalTime(dto.StartTime, out var start) ||
+            !TryParseLocalTime(dto.EndTime, out var end))
+        {
+            return BadRequest("Aikamuoto on virheellinen. Käytä muotoa yyyy-MM-dd HH:mm.");
+        }
+
+        if (start >= end)
+            return BadRequest("Aloitusajan tulee olla ennen lopetusaikaa.");
+
+        // TARKISTUS: Onko huone olemassa?
+        var roomExists = _db.Rooms.Any(r => r.Name.ToLower() == dto.RoomName.ToLower());
+        if (!roomExists)
+        return BadRequest("Huonetta ei löydy. Varaus voidaan tehdä vain olemassaoleviin huoneisiin.");
+
+        var reservation = new Reservation
+        {
+            RoomName = dto.RoomName,
+            StartTime = start,
+            EndTime = end
+        };
+
+        var result = _service.AddReservation(reservation);
+
+        if (!result.Success)
+            return BadRequest(result.Error);
+
+        return CreatedAtAction(nameof(GetByRoom), new { roomName = result.Reservation!.RoomName }, result.Reservation);
+    }
+
+    // ... (muut metodit ennallaan)
+}
+```
+Muutokset:
+•	Lisätty AppDbContext kontrollerin konstruktorin parametreihin ja talletettu kenttään.
+•	Lisätty huoneen olemassaolon tarkistus ennen varauksen luontia.
+•	Jos huonetta ei löydy, palautetaan virheviesti.
+Nyt varauksia voi tehdä vain huoneisiin, jotka löytyvät tietokannasta.

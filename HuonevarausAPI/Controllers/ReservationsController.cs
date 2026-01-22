@@ -37,6 +37,9 @@ public class ReservationsController : ControllerBase
     [HttpPost]
     public ActionResult<Reservation> Create([FromBody] ReservationCreateDto dto)
     {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
         if (!TryParseLocalTime(dto.StartTime, out var start) ||
             !TryParseLocalTime(dto.EndTime, out var end))
         {
@@ -79,6 +82,9 @@ public class ReservationsController : ControllerBase
     [HttpDelete]
     public IActionResult CancelByDetails([FromBody] ReservationCancelDto dto)
     {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
         if (!TryParseLocalTime(dto.StartTime, out var start) ||
             !TryParseLocalTime(dto.EndTime, out var end))
         {
