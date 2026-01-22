@@ -15,25 +15,39 @@ public class ReservationsController : ControllerBase
         _service = service;
     }
 
+    // Tehdään ajan parsetukselle oma funktio, jotta ei tule turhia duplikaatteja
+    private static bool TryParseLocalTime(string input, out DateTimeOffset result)
+    {
+        var tz = TimeZoneInfo.FindSystemTimeZoneById("FLE Standard Time"); // UTC+2 (Suomi)
+        if (DateTimeOffset.TryParseExact(input, "yyyy-MM-dd HH:mm", null, System.Globalization.DateTimeStyles.None, out var localTime))
+        {
+            // Asetetaan oikea offset
+            var offset = tz.GetUtcOffset(localTime.DateTime);
+            result = new DateTimeOffset(localTime.DateTime, offset);
+            return true;
+        }
+        result = default;
+        return false;
+    }
+
     // 1. Varauksen luonti
     [HttpPost]
     public ActionResult<Reservation> Create([FromBody] ReservationCreateDto dto)
     {
-        var tz = TimeZoneInfo.FindSystemTimeZoneById("FLE Standard Time"); // UTC+2 (Suomi)
-        if (!DateTime.TryParseExact(dto.StartTime, "yyyy-MM-dd HH:mm", null, System.Globalization.DateTimeStyles.None, out var localStart) ||
-            !DateTime.TryParseExact(dto.EndTime, "yyyy-MM-dd HH:mm", null, System.Globalization.DateTimeStyles.None, out var localEnd))
+        if (!TryParseLocalTime(dto.StartTime, out var start) ||
+            !TryParseLocalTime(dto.EndTime, out var end))
         {
             return BadRequest("Aikamuoto on virheellinen. Käytä muotoa yyyy-MM-dd HH:mm.");
         }
 
-        var startUtc = TimeZoneInfo.ConvertTimeToUtc(localStart, tz);
-        var endUtc = TimeZoneInfo.ConvertTimeToUtc(localEnd, tz);
+        if (start >= end)
+            return BadRequest("Aloitusajan tulee olla ennen lopetusaikaa.");
 
         var reservation = new Reservation
         {
             RoomName = dto.RoomName,
-            StartTime = startUtc,
-            EndTime = endUtc
+            StartTime = start,
+            EndTime = end
         };
 
         var result = _service.AddReservation(reservation);
@@ -57,17 +71,13 @@ public class ReservationsController : ControllerBase
     [HttpDelete]
     public IActionResult CancelByDetails([FromBody] ReservationCancelDto dto)
     {
-        var tz = TimeZoneInfo.FindSystemTimeZoneById("FLE Standard Time"); // UTC+2 (Suomi)
-        if (!DateTime.TryParseExact(dto.StartTime, "yyyy-MM-dd HH:mm", null, System.Globalization.DateTimeStyles.None, out var localStart) ||
-            !DateTime.TryParseExact(dto.EndTime, "yyyy-MM-dd HH:mm", null, System.Globalization.DateTimeStyles.None, out var localEnd))
+        if (!TryParseLocalTime(dto.StartTime, out var start) ||
+            !TryParseLocalTime(dto.EndTime, out var end))
         {
             return BadRequest("Aikamuoto on virheellinen. Käytä muotoa yyyy-MM-dd HH:mm.");
         }
 
-        var startUtc = TimeZoneInfo.ConvertTimeToUtc(localStart, tz);
-        var endUtc = TimeZoneInfo.ConvertTimeToUtc(localEnd, tz);
-
-        var success = _service.CancelReservation(dto.RoomName, startUtc, endUtc);
+        var success = _service.CancelReservation(dto.RoomName, start, end);
         if (!success) return NotFound();
         return NoContent();
     }

@@ -12,7 +12,7 @@ public class ReservationService
         if (reservation.StartTime >= reservation.EndTime)
             return (false, "Aloitusajan tulee olla ennen lopetusaikaa.", null);
 
-        if (reservation.StartTime < DateTime.UtcNow || reservation.EndTime < DateTime.UtcNow)
+        if (reservation.StartTime < DateTimeOffset.UtcNow || reservation.EndTime < DateTimeOffset.UtcNow)
             return (false, "Varauksen ajat eivät voi olla menneisyydessä.", null);
 
         var overlaps = _reservations.Any(r =>
@@ -37,7 +37,7 @@ public class ReservationService
     }
 
     // Poistaa varauksen huoneen nimen ja aikavälin perusteella
-    public bool CancelReservation(string roomName, DateTime startUtc, DateTime endUtc)
+    public bool CancelReservation(string roomName, DateTimeOffset startUtc, DateTimeOffset endUtc)
     {
         var res = _reservations.FirstOrDefault(r =>
             r.RoomName.Equals(roomName, StringComparison.OrdinalIgnoreCase) &&
