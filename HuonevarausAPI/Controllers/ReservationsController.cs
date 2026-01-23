@@ -33,21 +33,37 @@ public class ReservationsController : ControllerBase
         return false;
     }
 
-    // 1. Varauksen luonti
-    [HttpPost]
-    public ActionResult<Reservation> Create([FromBody] ReservationCreateDto dto)
+    // uusi, validoinnin ja parsetuksen yhdistävä metodi
+    private ActionResult<(DateTimeOffset Start, DateTimeOffset End)> ValidateAndParseTimes(object dto, string startProp, string endProp)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        if (!TryParseLocalTime(dto.StartTime, out var start) ||
-            !TryParseLocalTime(dto.EndTime, out var end))
+        var dtoType = dto.GetType();
+        var startStr = dtoType.GetProperty(startProp)?.GetValue(dto) as string;
+        var endStr = dtoType.GetProperty(endProp)?.GetValue(dto) as string;
+
+        if (!TryParseLocalTime(startStr ?? "", out var start) ||
+            !TryParseLocalTime(endStr ?? "", out var end))
         {
             return BadRequest("Aikamuoto on virheellinen. Käytä muotoa yyyy-MM-dd HH:mm.");
         }
 
         if (start >= end)
             return BadRequest("Aloitusajan tulee olla ennen lopetusaikaa.");
+
+        return (start, end);
+    }
+
+    // 1. Varauksen luonti
+    [HttpPost]
+    public ActionResult<Reservation> Create([FromBody] ReservationCreateDto dto)
+    {
+        var timeResult = ValidateAndParseTimes(dto, nameof(dto.StartTime), nameof(dto.EndTime));
+        if (timeResult.Result != null)
+            return timeResult.Result;
+
+        var (start, end) = timeResult.Value;
 
         // Korjaus: Tarkistetaan, että huone on olemassa
         var roomExists = _db.Rooms.Any(r => r.Name.ToLower() == dto.RoomName.ToLower());
@@ -82,14 +98,11 @@ public class ReservationsController : ControllerBase
     [HttpDelete]
     public IActionResult CancelByDetails([FromBody] ReservationCancelDto dto)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
+        var timeResult = ValidateAndParseTimes(dto, nameof(dto.StartTime), nameof(dto.EndTime));
+        if (timeResult.Result != null)
+            return timeResult.Result;
 
-        if (!TryParseLocalTime(dto.StartTime, out var start) ||
-            !TryParseLocalTime(dto.EndTime, out var end))
-        {
-            return BadRequest("Aikamuoto on virheellinen. Käytä muotoa yyyy-MM-dd HH:mm.");
-        }
+        var (start, end) = timeResult.Value;
 
         var success = _service.CancelReservation(dto.RoomName, start, end);
         if (!success) return NotFound();
