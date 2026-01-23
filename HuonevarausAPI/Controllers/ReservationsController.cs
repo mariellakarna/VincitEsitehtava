@@ -33,7 +33,7 @@ public class ReservationsController : ControllerBase
         return false;
     }
 
-    // uusi, validoinnin ja parsetuksen yhdistävä metodi
+    // Uusi, validoinnin ja parsetuksen yhdistävä metodi
     private ActionResult<(DateTimeOffset Start, DateTimeOffset End)> ValidateAndParseTimes(object dto, string startProp, string endProp)
     {
         if (!ModelState.IsValid)
@@ -59,6 +59,7 @@ public class ReservationsController : ControllerBase
     [HttpPost]
     public ActionResult<Reservation> Create([FromBody] ReservationCreateDto dto)
     {
+        // tässä kutsutaan ajanparsimismetodia, jotta parsimiskoodia ei tehdä itse HTTP-endpointissa kömpelösti
         var timeResult = ValidateAndParseTimes(dto, nameof(dto.StartTime), nameof(dto.EndTime));
         if (timeResult.Result != null)
             return timeResult.Result;
@@ -98,6 +99,7 @@ public class ReservationsController : ControllerBase
     [HttpDelete]
     public IActionResult CancelByDetails([FromBody] ReservationCancelDto dto)
     {
+        // kutsutaan ajanparsimismetodia
         var timeResult = ValidateAndParseTimes(dto, nameof(dto.StartTime), nameof(dto.EndTime));
         if (timeResult.Result != null)
             return timeResult.Result;

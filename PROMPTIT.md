@@ -249,6 +249,7 @@ palauttaa selkeän virheen käyttäjälle tarvittaessa.
 
 ***
 
+**Oma kommentti:**
 Tässä vaiheessa ohjelmaa käynnistäessä sain errorin, koska tekoäly ei ollut osannut huomioida,
 että haettavan huoneen nimeä kutsuttiin vääränlaisella attribuutilla. Kysyin tekoälyltä virheestä,
 ja se osasi vastata pulmaan oikein ja antaa sopivan koodinpätkän, jolla ongelma ratkeaa.
@@ -625,3 +626,10 @@ Muutokset:
 •	Lisätty huoneen olemassaolon tarkistus ennen varauksen luontia.
 •	Jos huonetta ei löydy, palautetaan virheviesti.
 Nyt varauksia voi tehdä vain huoneisiin, jotka löytyvät tietokannasta.
+
+**Oma kommentti:**
+Läpinäkyvyyden vuoksi, käytin myös tekoälyä pienenä apuna korjaamaan duplikaattikoodit pois Create- ja CancelByDetails
+metodeista, mutta tässä vaiheessa vähän sekoilin GitHubin ja projektitiedostojen kanssa, joten siitä käymäni keskustelu
+tekoälyn kanssa hävisi taivaan tuuliin enkä ollut vielä dokumentoinut sitä tänne :( Idea siinä kuitenkin oli
+poistaa duplikaattikoodit erilliseen apumetodiin, joka hoitaa ajanparsimisen ja aikavyöhykkeen käsittelyn, jotta
+sitä ei tehdä miljoonaa kertaa Createssa ja CancelByDetailsissa erikseen.
