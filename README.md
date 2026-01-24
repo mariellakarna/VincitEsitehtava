@@ -18,10 +18,13 @@ NuGet Packaget jotka tarvitaan ohjelman toimintaan sekä kompaktin ohjeistuksen 
 ## Endpointit
 POST: Create
 - Luo uuden huonevarauksen antamalla huoneen ja varausajan tiedot.
+
 DELETE: Cancel
 - Poistaa huonevarauksen GUID:in avulla.
+
 DELETE: CancelByDetails
 - Poistaa huonevarauksen huoneen ja varausajan tiedoilla.
+
 GET: GetByRoom
 - Listaa haetun huoneen varaukset
 
